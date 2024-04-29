@@ -10,7 +10,7 @@ import base64
 import time
 from pathlib import Path
 
-from utils.tts import make_tts_file
+from speak.speak_handler import SpeakingHandler
 
 load_dotenv()
 
@@ -20,8 +20,12 @@ if "audio" not in st.session_state:
 
 # Init
 initial_ai_msg = "Hello, I am a bot. How can I help you?"
-last_ai_msg = initial_ai_msg
+last_ai_msg = ""
 page_title = "Ankit's streaming RAG"
+speakingHandler = SpeakingHandler()
+
+# Defaults
+default_tts_voice = 3
 
 # app config
 st.set_page_config(page_title=page_title, page_icon="🤖")
@@ -29,16 +33,18 @@ st.title(page_title)
 
 # Sidebar
 st.sidebar.write(last_ai_msg)
-llm_temperature = st.sidebar.slider("Temperature", min_value=0.1, max_value=1.0, step=0.1, value=0.5)
+llm_temperature = st.sidebar.slider("🎨 Temperature", min_value=0.1, max_value=1.0, step=0.1, value=0.5)
+tts_speed = st.sidebar.slider("🏎️ Speed", key="tts_speed", min_value=0.25, max_value=4.0, step=0.05, value=1.0)
 
-
-llm_max_tokens = st.sidebar.number_input("Max tokens", value=2000, min_value=10)
+llm_max_tokens = st.sidebar.number_input("🪀 Max tokens", value=2000, min_value=10, step=100)
 
 # text = st.text_area("Your text", value = DEFAULT_TEXT, max_chars=4096, height=250)
-voice = st.sidebar.radio("Voice", ["alloy", "echo", "fable", "onyx", "nova", "shimmer"], horizontal = True, index=3, help="Previews can be found [here](https://platform.openai.com/docs/guides/text-to-speech/voice-options)")
+st.sidebar.radio("🗣️ Voice", ["alloy", "echo", "fable", "onyx", "nova", "shimmer"], key="tts_voice", horizontal = True, index=default_tts_voice, help="Previews can be found [here](https://platform.openai.com/docs/guides/text-to-speech/voice-options)")
 
-# if st.sidebar.button("📣 Say it"):
-#     text_to_speech(last_ai_msg, voice)
+# speakingHandler.settings_save(voice=tts_voice, speed=tts_speed)
+
+# if st.sidebar.button("📣 Reset"):
+#     default_tts_voice = 3
 
 # prompt
 template = """
@@ -56,7 +62,10 @@ def get_response(user_query, chat_history):
     llm = ChatOpenAI(
         temperature=llm_temperature, 
         max_tokens=llm_max_tokens,
-        callbacks=[])
+        callbacks=[speakingHandler])
+    
+    # TODO ------------------ use another callback for displaying text
+    # https://gist.github.com/goldengrape/84ce3624fd5be8bc14f9117c3e6ef81a
     
     # Create Langchain
     chain = prompt | llm | StrOutputParser()
@@ -92,25 +101,35 @@ if user_query is not None and user_query != "":
         st.markdown(user_query)
 
     with st.chat_message("AI"):
-        response = st.write_stream(get_response(user_query, st.session_state.chat_history))
+
+        with st.spinner("Generating response..."):
+                
+            response = st.write_stream(get_response(user_query, st.session_state.chat_history))
 
         # Call TTS function here
-        make_tts_file(response, voice)
+        last_ai_msg = response
+
+        # with st.spinner("Generating speech..."):
+        #     make_tts_file(last_ai_msg, voice, tts_speed)
 
     st.session_state.chat_history.append(AIMessage(content=response))
 
-def autoplay_audio(file_path: str):
-    with open(file_path, "rb") as f:
-        data = f.read()
-        b64 = base64.b64encode(data).decode()
-        md = f"""
-            <audio controls autoplay="true">
-            <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
-            </audio>
-            """
-        st.markdown(
-            md,
-            unsafe_allow_html=True,
-        )
+# def autoplay_audio(file_path: str):
+#     with open(file_path, "rb") as f:
+#         # Hide initially
+#         # if last_ai_msg == "":
+#         #     return
+        
+#         data = f.read()
+#         b64 = base64.b64encode(data).decode()
+#         md = f"""
+#             <audio controls autoplay="true">
+#             <source src="data:audio/mp3;base64,{b64}" type="audio/mp3">
+#             </audio>
+#             """
+#         st.markdown(
+#             md,
+#             unsafe_allow_html=True,
+#         )
 
-autoplay_audio("tts_audio.mp3")
+# autoplay_audio("output/tts_audio.mp3")

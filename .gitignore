@@ -1,2 +1,7 @@
 .env
 *.mp3
+output/
+
+**/__pycache_/
+src/speak/__pycache__/
+src/utils/__pycache__/
