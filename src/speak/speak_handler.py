@@ -35,7 +35,6 @@ class SpeakingHandler(BaseCallbackHandler):
 
         # Empty token comes at both the START and END of the whole response.
         if token == "":
-             print("ENDDDDDD. Resetting.")
              self.reset()
              return
 
@@ -51,9 +50,7 @@ class SpeakingHandler(BaseCallbackHandler):
             speak_this = self.new_sentence
             self.sentence_index += 1
 
-            
-            print("📣 Generating TTS" + 
-                  f"\n\t sentence #{self.sentence_index} = (" + speak_this + ")")
+            print(f"📣 Sentence #{self.sentence_index} = (" + speak_this + ")")
             
             if "MacOS" == st.session_state.voice_gen_type:
                 # Ask OS to speak
@@ -61,6 +58,7 @@ class SpeakingHandler(BaseCallbackHandler):
             elif "OpenAI" == st.session_state.voice_gen_type:
                 self.openai_speak_sentence(speak_this)
             
+            # Reset
             self.new_sentence = ""
             
     # @Override from Langchain
@@ -91,8 +89,10 @@ class SpeakingHandler(BaseCallbackHandler):
             return
         filepath = self.get_audio_file_path()
 
-        print("Submitting #" + str(self.sentence_index))
-        future = self.executor.submit(self.play_audio_file, self.sentence_index, filepath)
+        print("🛩️ Submitting #" + str(self.sentence_index))
+        future = self.executor.submit(
+            self.play_audio_file, 
+            self.sentence_index, filepath)
         for thread in self.executor._threads:
 
             # Set context.
@@ -107,7 +107,7 @@ class SpeakingHandler(BaseCallbackHandler):
     def play_audio_file(self, sentence_number, filepath):
         
         with open(filepath, "rb") as f:
-            print("\t 🔈 Playing audio file: " + filepath)
+            print("🔈 Playing audio #" + str(sentence_number))
             data = f.read()
             audio_base64 = base64.b64encode(data).decode()
             audio_tag = f'<audio autoplay="true" src="data:audio/wav;base64,{audio_base64}">'
@@ -116,11 +116,11 @@ class SpeakingHandler(BaseCallbackHandler):
 
             # TODO ------ Sleep is causing text display to pause too.
             number_of_seconds = eyed3.load(filepath).info.time_secs
-            print("\t Sleeping " + str(number_of_seconds) + " seconds")
+            print("\t Sleeping (#" + str(sentence_number) + ")" + str(number_of_seconds) + " seconds")
             time.sleep(number_of_seconds 
                        + PAUSE_DURATION_BETWEEN_SENTENCES_MSEC)
 
-            print("Done " + str(sentence_number))
+            print("\t Done playing #" + str(sentence_number))
             return "Done " + str(sentence_number)
 
     def call_openai_tts(self, text):

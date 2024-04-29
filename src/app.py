@@ -12,54 +12,57 @@ from pathlib import Path
 
 from speak.speak_handler import SpeakingHandler
 
-load_dotenv()
 
-# TTS
+# Config
+page_title = "Ankit's assistant"
+bot_avatar = "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/16839a88-ba93-4b12-a311-eded58cf9f7e/dg2konf-852cf7dc-9d60-4145-9cc3-837fcb5e89d3.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiJcL2ZcLzE2ODM5YTg4LWJhOTMtNGIxMi1hMzExLWVkZWQ1OGNmOWY3ZVwvZGcya29uZi04NTJjZjdkYy05ZDYwLTQxNDUtOWNjMy04MzdmY2I1ZTg5ZDMucG5nIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmZpbGUuZG93bmxvYWQiXX0.jFRpeTPa-Z7gyeXUY_IStkfIGOE-MzDKZafkOBcrvOs"
+human_avatar = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRvnitFAIH_gCZg3Nq_65oi87usR1duVCT3epuTLWbjmA&s"
+default_tts_voice = 0 # alloy
+initial_ai_msg = "Hello. How can I help you today?"
+
+# Init
+last_ai_msg = ""
+speakingHandler = SpeakingHandler()
+load_dotenv()
+# TTS ----- not sure if needed
 if "audio" not in st.session_state:
     st.session_state["audio"] = None
 
-# Init
-initial_ai_msg = "Hello, I am a bot. How can I help you?"
-last_ai_msg = ""
-page_title = "Ankit's streaming RAG"
-speakingHandler = SpeakingHandler()
-
-# Defaults
-default_tts_voice = 0 # alloy
-
-# app config
+# ------------------------------------------------------- App 
 st.set_page_config(page_title=page_title, page_icon="🤖")
 st.title(page_title)
 
 # ------------------------------------------------------- Sidebar
-st.sidebar.header('Model settings')
-llm_temperature = st.sidebar.slider(
+st.sidebar.header('⚙️ Settings')
+
+llm_settings = st.sidebar.expander('LLM')
+llm_temperature = llm_settings.slider(
     "🎨 Temperature", 
     min_value=0.1, max_value=1.0, step=0.1, 
     value=0.5
 )
-llm_max_tokens = st.sidebar.number_input(
-    "🪀 Max tokens", 
+llm_max_tokens = llm_settings.number_input(
+    "🛑 Token limit", 
     value=2000, 
     min_value=10, step=100
 )
-
-st.sidebar.header('Speech settings')
-voice_gen_type = st.sidebar.selectbox(
+# st.sidebar.markdown("""---""")
+speech_settings = st.sidebar.expander('Speech')
+speech_settings.selectbox(
    "Voice generator",
    key="voice_gen_type",
    options=("OpenAI", "MacOS"),
    index=0,
    placeholder="Select voice generator",
 )
-tts_speed = st.sidebar.slider(
+speech_settings.slider(
     "🏎️ Speed", 
     key="tts_speed", 
     min_value=0.25, max_value=4.0, step=0.05, 
     value=1.0
 )
 # text = st.text_area("Your text", value = DEFAULT_TEXT, max_chars=4096, height=250)
-st.sidebar.radio(
+speech_settings.radio(
     "🗣️ Voice", 
     options=["alloy", "echo", "fable", "onyx", "nova", "shimmer"], 
     key="tts_voice", 
@@ -119,10 +122,10 @@ if "chat_history" not in st.session_state:
 # conversation
 for message in st.session_state.chat_history:
     if isinstance(message, AIMessage):
-        with st.chat_message("AI"):
+        with st.chat_message("AI", avatar=bot_avatar):
             st.write(message.content)
     elif isinstance(message, HumanMessage):
-        with st.chat_message("Human"):
+        with st.chat_message("Human", avatar=human_avatar):
             st.write(message.content)
 
 # user input
@@ -130,10 +133,10 @@ user_query = st.chat_input("Type your message here...")
 if user_query is not None and user_query != "":
     st.session_state.chat_history.append(HumanMessage(content=user_query))
 
-    with st.chat_message("Human"):
+    with st.chat_message("Human", avatar=human_avatar):
         st.markdown(user_query)
 
-    with st.chat_message("AI"):
+    with st.chat_message("AI", avatar=bot_avatar):
         with st.spinner("Generating response..."):
             response = st.write_stream(
                 get_response(
