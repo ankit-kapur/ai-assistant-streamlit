@@ -5,8 +5,12 @@ from openai import OpenAI
 from pathlib import Path
 import eyed3
 import streamlit as st
+from streamlit.runtime.scriptrunner.script_run_context import get_script_run_ctx, add_script_run_ctx
+from os import system # for MacOS audio
+import concurrent.futures
+# import asyncio
 
-from os import system
+PAUSE_DURATION_BETWEEN_SENTENCES_MSEC = 0.5 # ms
 
 # Open AI init
 openai_client = OpenAI()
@@ -16,13 +20,22 @@ class SpeakingHandler(BaseCallbackHandler):
         self.new_sentence = ""
         self.sentence_index = -1
 
+        # Multithreading for audio streaming
+        self.futures = []
+        self.executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers = 1)
+
+        # # Not really getting called. Don't know if i need
+        # for future in concurrent.futures.as_completed(self.futures):
+        #     result = future.result()
+        #     print("✅ " + result)
+
     # @Override from Langchain
     def on_llm_new_token(self, token: str, **kwargs) -> None:
-        print("token = " + token)
 
         # Empty token comes at both the START and END of the whole response.
         if token == "":
-             print("Empty token. Returning.")
+             print("ENDDDDDD. Resetting.")
              self.reset()
              return
 
@@ -39,8 +52,8 @@ class SpeakingHandler(BaseCallbackHandler):
             self.sentence_index += 1
 
             
-            print("📣 ---------- Generating TTS!" + 
-                  f"\n\tsentence #{self.sentence_index} = (" + speak_this + ")")
+            print("📣 Generating TTS" + 
+                  f"\n\t sentence #{self.sentence_index} = (" + speak_this + ")")
             
             if "MacOS" == st.session_state.voice_gen_type:
                 # Ask OS to speak
@@ -52,37 +65,63 @@ class SpeakingHandler(BaseCallbackHandler):
             
     # @Override from Langchain
     def on_llm_end(self, response, **kwargs) -> None:
-        print("ENDDDDDDDDDD ")
+        print("End of audio stream.")
         self.new_sentence = ""
 
     def reset(self):
-        print("⛱️ Reset")
+        print("⛱️ Resetting.")
+        
+        self.executor.shutdown(wait=True)
+
+        # ??????????
+        self.executor = concurrent.futures.ThreadPoolExecutor(
+            max_workers = 1)
+
         self.sentence_index = -1
         self.new_sentence = ""
     
     def openai_speak_sentence(self, sentence):
         response = self.call_openai_tts(sentence)
         self.make_tts_file(response)
-        self.play_audio_file()
-
-    def play_audio_file(self):
+        self.play_audio()
+    
+    def play_audio(self):
         if self.sentence_index == -1:
-            print("\t\t Empty speak request. self.sentence_index = " + self.sentence_index)
+            print("\t\t 🚨 🚨 🚨 Empty speak request. self.sentence_index = " + self.sentence_index)
             return
         filepath = self.get_audio_file_path()
+
+        print("Submitting #" + str(self.sentence_index))
+        future = self.executor.submit(self.play_audio_file, self.sentence_index, filepath)
+        for thread in self.executor._threads:
+
+            # Set context.
+            # Needed because streamlit itself is using threads.
+            ctx = get_script_run_ctx(thread)
+            add_script_run_ctx(thread, ctx)
+
+        self.futures.append(future)
+
+        # asyncio.run(self.play_audio_file(filepath))
+
+    def play_audio_file(self, sentence_number, filepath):
+        
         with open(filepath, "rb") as f:
-            print("\t 🔈 🔈 🔈 Reading audio file --- " + filepath)
+            print("\t 🔈 Playing audio file: " + filepath)
             data = f.read()
             audio_base64 = base64.b64encode(data).decode()
             audio_tag = f'<audio autoplay="true" src="data:audio/wav;base64,{audio_base64}">'
 
-            print("\t Setting markdown")
             st.markdown(audio_tag, unsafe_allow_html=True)
 
             # TODO ------ Sleep is causing text display to pause too.
             number_of_seconds = eyed3.load(filepath).info.time_secs
             print("\t Sleeping " + str(number_of_seconds) + " seconds")
-            time.sleep(number_of_seconds)
+            time.sleep(number_of_seconds 
+                       + PAUSE_DURATION_BETWEEN_SENTENCES_MSEC)
+
+            print("Done " + str(sentence_number))
+            return "Done " + str(sentence_number)
 
     def call_openai_tts(self, text):
         voice = st.session_state.tts_voice

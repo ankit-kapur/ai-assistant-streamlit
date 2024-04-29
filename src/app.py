@@ -25,7 +25,7 @@ page_title = "Ankit's streaming RAG"
 speakingHandler = SpeakingHandler()
 
 # Defaults
-default_tts_voice = 3
+default_tts_voice = 0 # alloy
 
 # app config
 st.set_page_config(page_title=page_title, page_icon="🤖")
