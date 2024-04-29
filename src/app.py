@@ -4,17 +4,43 @@ from langchain_openai import ChatOpenAI
 from dotenv import load_dotenv
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import ChatPromptTemplate
-
+from langchain.callbacks.base import BaseCallbackHandler
+from openai import OpenAI
+import os
+import base64
+import time
+from pathlib import Path
 
 load_dotenv()
+
+# Open AI init
+client = OpenAI() # api_key=st.secrets["OPENAI_API_KEY"]
+
+if "audio" not in st.session_state:
+    st.session_state["audio"] = None
+
 
 # app config
 st.set_page_config(page_title="Streaming bot", page_icon="🤖")
 st.title("Streaming bot")
 
-def get_response(user_query, chat_history):
+# Sidebar
+st.sidebar.write('Hello 👋🏽')
+llm_temperature = st.sidebar.slider("Temperature", min_value=0.1, max_value=1.0, step=0.1, value=0.5)
 
-    template = """
+
+llm_max_tokens = st.sidebar.number_input("Max tokens", value=200)
+
+# text = st.text_area("Your text", value = DEFAULT_TEXT, max_chars=4096, height=250)
+voice = st.sidebar.radio("Voice", ["alloy", "echo", "fable", "onyx", "nova", "shimmer"], horizontal = True, index=3, help="Previews can be found [here](https://platform.openai.com/docs/guides/text-to-speech/voice-options)")
+
+if st.sidebar.button("📣 Say it"):
+
+    # TODO ------- call TTS function here
+    text_to_speech()
+
+# prompt
+template = """
     You are a helpful assistant. Answer the following questions considering the history of the conversation:
 
     Chat history: {chat_history}
@@ -22,12 +48,18 @@ def get_response(user_query, chat_history):
     User question: {user_question}
     """
 
+def get_response(user_query, chat_history):
+
     prompt = ChatPromptTemplate.from_template(template)
 
-    llm = ChatOpenAI()
-        
+    llm = ChatOpenAI(
+        temperature=llm_temperature, 
+        max_tokens=llm_max_tokens)
+    
+    # Create Langchain
     chain = prompt | llm | StrOutputParser()
     
+    # Invoke the chain
     return chain.stream({
         "chat_history": chat_history,
         "user_question": user_query,
@@ -60,4 +92,16 @@ if user_query is not None and user_query != "":
     with st.chat_message("AI"):
         response = st.write_stream(get_response(user_query, st.session_state.chat_history))
 
+        # TODO ------- call TTS function here
+
     st.session_state.chat_history.append(AIMessage(content=response))
+
+# TTS via OpenAI
+def text_to_speech(text, voice):
+    speech_file_path = Path("tts_audio.mp3")
+    response = client.audio.speech.create(
+      model="tts-1",
+      voice=voice,
+      input=text
+    )
+    response.stream_to_file(speech_file_path)
