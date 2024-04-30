@@ -9,16 +9,23 @@ import os
 import base64
 import time
 from pathlib import Path
+import whisper
 
+# https://github.com/theevann/streamlit-audiorecorder
+from audiorecorder import audiorecorder
+
+# https://github.com/stefanrmmr/streamlit-audio-recorder
+# from st_audiorec import st_audiorec
+
+# My classes
 from speak.speak_handler import SpeakingHandler
-
 
 # Config
 page_title = "Ankit's assistant"
-bot_avatar = "https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/f/16839a88-ba93-4b12-a311-eded58cf9f7e/dg2konf-852cf7dc-9d60-4145-9cc3-837fcb5e89d3.png?token=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ1cm46YXBwOjdlMGQxODg5ODIyNjQzNzNhNWYwZDQxNWVhMGQyNmUwIiwiaXNzIjoidXJuOmFwcDo3ZTBkMTg4OTgyMjY0MzczYTVmMGQ0MTVlYTBkMjZlMCIsIm9iaiI6W1t7InBhdGgiOiJcL2ZcLzE2ODM5YTg4LWJhOTMtNGIxMi1hMzExLWVkZWQ1OGNmOWY3ZVwvZGcya29uZi04NTJjZjdkYy05ZDYwLTQxNDUtOWNjMy04MzdmY2I1ZTg5ZDMucG5nIn1dXSwiYXVkIjpbInVybjpzZXJ2aWNlOmZpbGUuZG93bmxvYWQiXX0.jFRpeTPa-Z7gyeXUY_IStkfIGOE-MzDKZafkOBcrvOs"
+bot_avatar = "https://img.freepik.com/premium-photo/drawing-robot-with-helmet-gloves-generative-ai_733139-11125.jpg"
 human_avatar = "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRvnitFAIH_gCZg3Nq_65oi87usR1duVCT3epuTLWbjmA&s"
 default_tts_voice = 0 # alloy
-initial_ai_msg = "Hello. How can I help you today?"
+initial_ai_msg = "Hello Ankit. How can I help you today?"
 
 # Init
 last_ai_msg = ""
@@ -28,9 +35,73 @@ load_dotenv()
 if "audio" not in st.session_state:
     st.session_state["audio"] = None
 
+# TEMPORARY HACK to disable SSL for whisper to work
+import ssl
+ssl._create_default_https_context = ssl._create_unverified_context
+
+# STT (Whisper)
+whisper_model = whisper.load_model("base") # base works just fine
+stt_audio_filepath = "output/stt_audio.wav"
+
 # ------------------------------------------------------- App 
-st.set_page_config(page_title=page_title, page_icon="🤖")
+st.set_page_config(
+    page_title=page_title, 
+    page_icon="🧞‍♂️",
+    initial_sidebar_state="auto", # or expanded or collapsed
+    layout="wide",
+)
 st.title(page_title)
+
+# Tabs
+chat_tab, analysis_tab, todo_tab = st.tabs(["💬  Chat", "🧐  Analyze", "📋 TODO"])
+now_box = todo_tab.container(border=True)
+next_box = todo_tab.container(border=True)
+later_box = todo_tab.container(border=True)
+with now_box:
+    st.subheader("Now")
+
+    st.checkbox(
+        "[Bug] AI text disappears if interrupted",
+        key="now_task_1")
+    st.checkbox(
+        "[Bug] Session state doesn't get saved",
+        key="now_task_2")
+    st.checkbox(
+        "[Feature] Pause/play button for audio",
+        key="now_task_3")
+    st.checkbox(
+        "",
+        key="now_task_4")
+
+    st.markdown(" ")
+with next_box:
+    st.subheader("Next")
+    
+    st.checkbox(
+        "[Aesthetic] Chat window height should fill the screen height",
+        key="next_task_1")
+    st.checkbox(
+        "Ollama API",
+        key="next_task_2")
+    st.checkbox(
+        "",
+        key="next_task_3")
+    
+    st.markdown(" ")
+with later_box:
+    st.subheader("Later")
+
+    st.checkbox(
+        "[Feature] URL scraper",
+        key="later_task_1")
+    st.checkbox(
+        "[Feature] PDF upload",
+        key="later_task_2")
+    st.checkbox(
+        "",
+        key="later_task_3")
+    
+    st.markdown(" ")
 
 # ------------------------------------------------------- Sidebar
 st.sidebar.header('⚙️ Settings')
@@ -84,7 +155,8 @@ template = """
     User question: {user_question}
     """
 
-def get_response(user_query, chat_history):
+
+def call_langchain(user_query, chat_history):
 
     prompt = ChatPromptTemplate.from_template(template)
 
@@ -92,15 +164,7 @@ def get_response(user_query, chat_history):
         streaming=True,
         temperature=llm_temperature, 
         max_tokens=llm_max_tokens,
-        callbacks=[
-            speakingHandler,
-
-            # TODO ------------------ use another callback? for displaying text
-            # https://gist.github.com/goldengrape/84ce3624fd5be8bc14f9117c3e6ef81a
-            
-            # No. write_stream should work. 
-            # Sleep is the issue. Do it in a thread.
-        ]
+        callbacks=[speakingHandler]
     )
     
     # Create Langchain
@@ -115,32 +179,65 @@ def get_response(user_query, chat_history):
 # session state
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = [
-        AIMessage(content="Hello, I am a bot. How can I help you?"),
+        AIMessage(content=initial_ai_msg),
     ]
 
-    
+
+
+# ------------------------  Structure of the chat tab
+chat_feed_container = chat_tab.container(border=True, height=300)
+
+# chat_input_column, mic_button_column = chat_tab.columns([5, 1])
+input_box_container = chat_tab.container(height=None, border=False)
+mic_button_container = chat_tab.container(height=None, border=False)
+
 # conversation
 for message in st.session_state.chat_history:
     if isinstance(message, AIMessage):
-        with st.chat_message("AI", avatar=bot_avatar):
+        with chat_feed_container.chat_message("AI", avatar=bot_avatar):
             st.write(message.content)
     elif isinstance(message, HumanMessage):
-        with st.chat_message("Human", avatar=human_avatar):
+        with chat_feed_container.chat_message("Human", avatar=human_avatar):
             st.write(message.content)
 
+def send_text_to_bot(text_message):
+    st.session_state.chat_history.append(HumanMessage(content=text_message))
+
+    with chat_feed_container.chat_message("Human", avatar=human_avatar):
+        st.markdown(text_message)
+
+    with chat_feed_container.chat_message("AI", avatar=bot_avatar):
+        # with st.spinner("Generating response..."):
+        response = st.write_stream(
+            call_langchain(
+                text_message, 
+                st.session_state.chat_history))
+
+        st.session_state.chat_history.append(
+            AIMessage(content=response))
+
 # user input
-user_query = st.chat_input("Type your message here...")
+user_query = input_box_container.chat_input("Type your message here...")
 if user_query is not None and user_query != "":
-    st.session_state.chat_history.append(HumanMessage(content=user_query))
+    send_text_to_bot(user_query)
 
-    with st.chat_message("Human", avatar=human_avatar):
-        st.markdown(user_query)
+# Recording
+# TODO --- Bring down to the bottom.
+# For continuous stream, see: https://github.com/whitphx/streamlit-stt-app/blob/main/app_deepspeech.py
 
-    with st.chat_message("AI", avatar=bot_avatar):
-        with st.spinner("Generating response..."):
-            response = st.write_stream(
-                get_response(
-                    user_query, 
-                    st.session_state.chat_history))
+with mic_button_container:
+    audio = audiorecorder(start_prompt = "", stop_prompt = "", show_visualizer = False)
 
-    st.session_state.chat_history.append(AIMessage(content=response))
+if len(audio) > 0:
+    # To play audio in frontend:
+    # st.audio(audio.export().read())  
+
+    # To save audio to a file, use pydub export method:
+    audio.export(stt_audio_filepath, format="wav")
+    # To get audio properties, use pydub AudioSegment properties:
+    # st.write(f"Frame rate: {audio.frame_rate}, Frame width: {audio.frame_width}, Duration: {audio.duration_seconds} seconds")
+
+    # STT
+    result = whisper_model.transcribe(stt_audio_filepath)
+    # Text to 'user_query'
+    send_text_to_bot(result["text"])
