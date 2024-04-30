@@ -53,25 +53,22 @@ st.set_page_config(
 st.title(page_title)
 
 # Tabs
-chat_tab, analysis_tab, todo_tab = st.tabs(["💬  Chat", "🧐  Analyze", "📋 TODO"])
-now_box = todo_tab.container(border=True)
-next_box = todo_tab.container(border=True)
-later_box = todo_tab.container(border=True)
+chat_tab, analysis_tab, settings_tab = st.tabs(["💬  Chat", "🧐  Analyze", "⚙️ Settings"])
+
+st.sidebar.header('📋 TODO')
+
+now_box = st.sidebar.container(border=True)
+next_box = st.sidebar.container(border=True)
+later_box = st.sidebar.container(border=True)
 with now_box:
     st.subheader("Now")
 
     st.checkbox(
-        "[Bug] AI text disappears if interrupted",
-        key="now_task_1")
+        "[Feature] URL scraper",
+        key="task6")
     st.checkbox(
-        "[Bug] Session state doesn't get saved",
-        key="now_task_2")
-    st.checkbox(
-        "[Feature] Pause/play button for audio",
-        key="now_task_3")
-    st.checkbox(
-        "",
-        key="now_task_4")
+        "[Bug] Session state doesn't save",
+        key="task1")
 
     st.markdown(" ")
 with next_box:
@@ -79,34 +76,34 @@ with next_box:
     
     st.checkbox(
         "[Aesthetic] Chat window height should fill the screen height",
-        key="next_task_1")
+        key="task4")
     st.checkbox(
-        "Ollama API",
-        key="next_task_2")
+        "[Bug] AI text disappears if interrupted",
+        key="task2")
     st.checkbox(
-        "",
-        key="next_task_3")
+        "[Feature] Ollama API",
+        key="task5")
     
     st.markdown(" ")
 with later_box:
     st.subheader("Later")
 
     st.checkbox(
-        "[Feature] URL scraper",
-        key="later_task_1")
-    st.checkbox(
         "[Feature] PDF upload",
-        key="later_task_2")
+        key="task7")
+    
     st.checkbox(
-        "",
-        key="later_task_3")
+        "[Feature] Pause/play button: for Audio",
+        key="task3")
+    st.checkbox(
+        "[Feature] Pause/play button: for Text",
+        key="task8")
     
     st.markdown(" ")
 
 # ------------------------------------------------------- Sidebar
-st.sidebar.header('⚙️ Settings')
 
-llm_settings = st.sidebar.expander('LLM')
+llm_settings = settings_tab.expander('LLM', expanded = True)
 llm_temperature = llm_settings.slider(
     "🎨 Temperature", 
     min_value=0.1, max_value=1.0, step=0.1, 
@@ -118,7 +115,7 @@ llm_max_tokens = llm_settings.number_input(
     min_value=10, step=100
 )
 # st.sidebar.markdown("""---""")
-speech_settings = st.sidebar.expander('Speech')
+speech_settings = settings_tab.expander('Speech', expanded = True)
 speech_settings.selectbox(
    "Voice generator",
    key="voice_gen_type",
