@@ -2,6 +2,6 @@
 *.mp3
 output/
 
-**/__pycache_/
+**/__pycache__
 src/speak/__pycache__/
 src/utils/__pycache__/
