@@ -6,6 +6,7 @@ import time
 from pathlib import Path
 
 # Local packages
+from app.tabs.analyze import AnalyzeBox
 from constants.config import page_title
 from app.tabs.chat import ChatBox
 from app.tabs.settings import SettingsBox
@@ -27,7 +28,7 @@ st.set_page_config(
 st.title(page_title)
 
 # Tabs
-chat_tab, analysis_tab, settings_tab = st.tabs(["💬  Chat", "🧐  Analyze", "⚙️ Settings"])
+chat_tab, analyze_tab, settings_tab = st.tabs(["💬  Chat", "🧐  Analyze", "⚙️ Settings"])
 
 settings_box = SettingsBox()
 settings_box.draw(settings_tab)
@@ -35,4 +36,5 @@ settings_box.draw(settings_tab)
 chat_box = ChatBox()
 chat_box.draw(chat_tab)
 
-# TODO: analyze tab
+analyze_box = AnalyzeBox()
+analyze_box.draw(analyze_tab)
