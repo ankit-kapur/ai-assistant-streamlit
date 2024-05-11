@@ -4,6 +4,9 @@ langchain_core==0.1.17
 langchain_openai==0.0.5
 python-dotenv==1.0.1
 streamlit==1.31.1
+streamlit-audiorecorder==0.0.5
 chromadb==0.3.29
 beautifulsoup4==4.12.2
 validators==0.28.1
+eyed3==0.9.7
+openai-whisper==v20231117
