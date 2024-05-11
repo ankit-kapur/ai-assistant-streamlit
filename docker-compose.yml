@@ -1,5 +1,5 @@
 services:
-    streamlit-assistant:
+    ai-assistant-streamlit:
         # container_name: "streamlit-assistant"
         # build: ./src
         build:

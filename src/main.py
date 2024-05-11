@@ -1,3 +1,4 @@
+from app.sidebar import draw_sidebar
 import streamlit as st
 from dotenv import load_dotenv
 import os
@@ -22,7 +23,7 @@ ssl._create_default_https_context = ssl._create_unverified_context
 st.set_page_config(
     page_title=page_title, 
     page_icon="🧞‍♂️",
-    initial_sidebar_state="auto", # or expanded or collapsed
+    initial_sidebar_state="auto", # or expanded or collapsed or auto
     layout="wide",
 )
 st.title(page_title)
@@ -38,3 +39,5 @@ chat_box.draw(chat_tab)
 
 analyze_box = AnalyzeBox()
 analyze_box.draw(analyze_tab)
+
+draw_sidebar()
