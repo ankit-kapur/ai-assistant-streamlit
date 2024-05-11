@@ -7,3 +7,4 @@ streamlit==1.31.1
 chromadb==0.3.29
 beautifulsoup4==4.12.2
 validators==0.28.1
+eyed3==0.9.7
