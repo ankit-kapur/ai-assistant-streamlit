@@ -5,6 +5,12 @@ services:
         build:
           dockerfile: ./Dockerfile
           context: ./
+<<<<<<< HEAD
+=======
+
+        env_file:
+          - .env
+>>>>>>> c2b0f4d (Dockerizing with docker compose. And adding missing dependencies in requirements.txt)
         
         ports:
             - 8501:8501
