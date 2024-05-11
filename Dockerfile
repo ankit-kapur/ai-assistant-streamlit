@@ -2,12 +2,9 @@ FROM python:3.10
 
 WORKDIR /app
 
-<<<<<<< HEAD
-=======
 # Keys from OpenAI etc.
 COPY .env .env
 
->>>>>>> c2b0f4d (Dockerizing with docker compose. And adding missing dependencies in requirements.txt)
 # Upgrade pip and install requirements
 COPY requirements.txt requirements.txt
 RUN pip3 install -U pip
