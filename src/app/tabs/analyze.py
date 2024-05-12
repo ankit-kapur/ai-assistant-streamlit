@@ -18,7 +18,7 @@ class AnalyzeBox():
                 "🌎 Website", 
                 placeholder = "Enter a website URL")
             
-            if st.button("Crawl 🕷️", type="secondary"):
+            if st.button("Crawl 🕷️", type="primary"):
                 self.crawl()
 
     def crawl(self):

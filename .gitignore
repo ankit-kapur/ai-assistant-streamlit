@@ -1,6 +1,7 @@
 .env
 *.mp3
 output/
+.conda
 
 **/__pycache__
 src/speak/__pycache__/

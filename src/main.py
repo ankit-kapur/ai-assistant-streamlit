@@ -35,7 +35,8 @@ settings_box = SettingsBox()
 settings_box.draw(settings_tab)
 
 chat_box = ChatBox()
-chat_box.draw(chat_tab)
+with chat_tab:
+    chat_box.draw(chat_tab)
 
 analyze_box = AnalyzeBox()
 analyze_box.draw(analyze_tab)
